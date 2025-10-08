@@ -1,0 +1,76 @@
+import React from "react";
+import { ExceptionConfiguration } from "./ExceptionConfiguration";
+import { ManningExceptionConfiguration } from "./ManningExceptionConfiguration";
+import type { Grupo } from "@/interfaces/Grupo.interface";
+
+interface SidebarProps {
+    manningRequerido: number;
+    onManningChange: (newManning: number) => void;
+    activeView?: string;
+    currentDate?: Date;
+    selectedGroups?: string[];
+    totalPercentage?: number;
+    showManning?: boolean;
+    currentAreaGroups?: Grupo[];
+    areaId?: number;
+    areaNombre?: string;
+    manningBase?: number;
+    areas?: { id: string; name: string; manning?: number }[];
+}
+
+const Sidebar: React.FC<SidebarProps> = ({
+    manningRequerido,
+    onManningChange,
+    activeView,
+    currentDate,
+    showManning = true,
+    currentAreaGroups = [],
+    areaId,
+    areaNombre,
+    manningBase,
+    areas
+}) => {
+    return (
+        <div className="w-72 flex flex-col gap-4">
+            <div className="bg-white border border-gray-200 p-4 rounded-lg">
+                <div className="text-sm font-semibold text-gray-900 mb-3">Leyenda del Calendario</div>
+                <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full bg-gray-400 flex-shrink-0"></div>
+                        <span className="text-sm text-gray-700">Días inhábiles</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full bg-red-500 flex-shrink-0"></div>
+                        <span className="text-sm text-gray-700">Porcentaje rebasado</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full bg-blue-500 flex-shrink-0"></div>
+                        <span className="text-sm text-gray-700">Días con personal en vacaciones</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Manning con Excepciones - Solo se muestra si showManning es true */}
+            {showManning && currentDate && (
+                <ManningExceptionConfiguration
+                    currentDate={currentDate}
+                    areaId={areaId}
+                    areaNombre={areaNombre}
+                    manningBase={manningBase || manningRequerido}
+                    onManningChange={onManningChange}
+                    areas={areas}
+                />
+            )}
+
+            {/* Configuración de excepciones - solo en vista de día y si showManning es true */}
+            {showManning && activeView === 'Día' && currentDate && (
+                <ExceptionConfiguration
+                    currentDate={currentDate}
+                    currentAreaGroups={currentAreaGroups}
+                />
+            )}
+        </div>
+    );
+};
+
+export default Sidebar;
