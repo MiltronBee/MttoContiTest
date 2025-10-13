@@ -111,9 +111,9 @@ namespace tiempo_libre.Helpers
 
             var fechaDateTime = fecha.ToDateTime(TimeOnly.MinValue);
             var diasDiferencia = (fechaDateTime - FECHA_REFERENCIA).Days;
-            var indice = Math.Abs(diasDiferencia) % rol.Length;
-            
-            return rol[indice];
+            var indice = diasDiferencia;
+
+            return rol[Math.Abs(indice) % rol.Length];
         }
 
         /// <summary>
@@ -143,6 +143,31 @@ namespace tiempo_libre.Helpers
         public static void ActualizarRegla(string codigoRegla, string[] patron)
         {
             REGLAS[codigoRegla] = patron;
+        }
+
+        /// <summary>
+        /// Ajustar una fecha para cálculo de turnos considerando Semana Santa
+        /// Si la fecha es después de Semana Santa, se ajusta restando 7 días
+        /// para que la semana después de Semana Santa use el mismo patrón que Semana Santa
+        /// </summary>
+        /// <param name="fecha">Fecha a ajustar</param>
+        /// <param name="semanaSantaFechaFinal">Fecha final de Semana Santa (null si no aplica)</param>
+        /// <returns>Fecha ajustada para cálculo de turnos</returns>
+        public static DateTime AjustarFechaPorSemanaSanta(DateTime fecha, DateOnly? semanaSantaFechaFinal)
+        {
+            if (!semanaSantaFechaFinal.HasValue)
+                return fecha;
+
+            var fechaOnly = DateOnly.FromDateTime(fecha);
+            var fechaFinalSS = semanaSantaFechaFinal.Value;
+
+            // Si la fecha es después de Semana Santa, restar 7 días para el cálculo
+            if (fechaOnly > fechaFinalSS)
+            {
+                return fecha.AddDays(-7);
+            }
+
+            return fecha;
         }
     }
 }

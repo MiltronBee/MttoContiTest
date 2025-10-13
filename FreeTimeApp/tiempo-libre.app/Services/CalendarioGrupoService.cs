@@ -46,7 +46,7 @@ namespace tiempo_libre.Services
                 return new ApiResponse<CalendarioGrupoResponse>(false, null, "No se pudo determinar la regla del grupo.");
 
             // Generar el calendario
-            var calendario = GenerarCalendario(fechaInicio, fechaFin, reglaInfo.Value.Regla, reglaInfo.Value.NumeroGrupo);
+            var calendario = await GenerarCalendarioAsync(fechaInicio, fechaFin, reglaInfo.Value.Regla, reglaInfo.Value.NumeroGrupo);
 
             var response = new CalendarioGrupoResponse
             {
@@ -62,7 +62,7 @@ namespace tiempo_libre.Services
         }
 
 
-        private List<CalendarioGrupoDiaDto> GenerarCalendario(DateTime fechaInicio, DateTime fechaFin, string regla, int numeroGrupo)
+        private async Task<List<CalendarioGrupoDiaDto>> GenerarCalendarioAsync(DateTime fechaInicio, DateTime fechaFin, string regla, int numeroGrupo)
         {
             var resultado = new List<CalendarioGrupoDiaDto>();
 
@@ -74,6 +74,17 @@ namespace tiempo_libre.Services
 
             // Crear el rol específico para este grupo usando TurnosHelper
             var rol = TurnosHelper.CrearRol(regla, numeroGrupo);
+
+            // Buscar Semana Santa que haya ocurrido antes o durante el rango de fechas
+            // Esto asegura que el ajuste aplique incluso si Semana Santa no está visible en pantalla
+            var fechaFinOnly = DateOnly.FromDateTime(fechaFin);
+            var semanaSanta = await _db.DiasInhabiles
+                .Where(d => d.Detalles.Contains("Semana Santa") &&
+                           d.FechaFinal <= fechaFinOnly)
+                .OrderByDescending(d => d.FechaFinal)
+                .FirstOrDefaultAsync();
+
+            DateOnly? semanaSantaFechaFinal = semanaSanta?.FechaFinal;
 
             // Normalizar fechas a medianoche para evitar problemas con componentes de tiempo
             var fechaInicioDate = fechaInicio.Date;
@@ -87,7 +98,11 @@ namespace tiempo_libre.Services
             {
                 if (fecha >= fechaInicioDate)
                 {
-                    var turnoCode = rol[i % (cantSemanas * 7)];
+                    // Ajustar la fecha de referencia para el cálculo considerando Semana Santa
+                    var fechaAjustada = TurnosHelper.AjustarFechaPorSemanaSanta(fecha, semanaSantaFechaFinal);
+                    var diasDesdeFechaReferencia = (fechaAjustada - new DateTime(TurnosHelper.FECHA_REFERENCIA.Ticks).Date).Days;
+
+                    var turnoCode = rol[diasDesdeFechaReferencia % (cantSemanas * 7)];
                     var tipoCalendario = TipoCalendarioExtensions.FromShortString(turnoCode);
 
                     resultado.Add(new CalendarioGrupoDiaDto
@@ -180,7 +195,7 @@ namespace tiempo_libre.Services
             int usuarioId, DateTime fechaInicio, DateTime fechaFin, string regla, int numeroGrupo)
         {
             // Generar calendario base
-            var calendarioBase = GenerarCalendario(fechaInicio, fechaFin, regla, numeroGrupo);
+            var calendarioBase = await GenerarCalendarioAsync(fechaInicio, fechaFin, regla, numeroGrupo);
 
             // Obtener incidencias del usuario
             var fechaInicioOnly = DateOnly.FromDateTime(fechaInicio);
