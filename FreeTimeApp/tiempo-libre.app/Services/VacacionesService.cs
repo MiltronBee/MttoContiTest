@@ -30,10 +30,8 @@ namespace tiempo_libre.Services
 
         public async Task<ApiResponse<VacacionesEmpleadoResponse>> CalcularVacacionesPorEmpleadoAsync(int empleadoId, int anio)
         {
-            // Obtener el empleado con su relación a VacacionesPorAntiguedad
-            var empleado = await _db.Users
-                .Include(u => u.VacacionesPorAntiguedad)
-                .FirstOrDefaultAsync(u => u.Id == empleadoId);
+            // Obtener el empleado
+            var empleado = await _db.Users.FindAsync(empleadoId);
 
             if (empleado == null)
                 return new ApiResponse<VacacionesEmpleadoResponse>(false, null, "El empleado especificado no existe.");
@@ -48,29 +46,8 @@ namespace tiempo_libre.Services
             if (antiguedadEnAnios < 1)
                 return new ApiResponse<VacacionesEmpleadoResponse>(false, null, "El empleado no tiene antigüedad suficiente para el año especificado.");
 
-            VacacionesCalculadas vacaciones;
-
-            // PRIORITY: Use database values if employee has VacacionesPorAntiguedadId set
-            if (empleado.VacacionesPorAntiguedadId.HasValue && empleado.VacacionesPorAntiguedad != null)
-            {
-                _logger.LogInformation("Using database vacation rules for employee {EmpleadoId} with VacacionesPorAntiguedadId {Id}",
-                    empleadoId, empleado.VacacionesPorAntiguedadId);
-
-                vacaciones = new VacacionesCalculadas
-                {
-                    DiasEmpresa = empleado.VacacionesPorAntiguedad.DiasAsignadosPorContinental,
-                    DiasAsignadosAutomaticamente = empleado.VacacionesPorAntiguedad.DiasParaAsignarAutomaticamente,
-                    DiasProgramables = empleado.VacacionesPorAntiguedad.DiasPorEscogerPorEmpleado,
-                    TotalDias = empleado.VacacionesPorAntiguedad.TotalDiasDeVacaciones
-                };
-            }
-            else
-            {
-                // FALLBACK: Use calculated values if no database entry exists
-                _logger.LogInformation("Calculating vacation days for employee {EmpleadoId} with {Antiguedad} years (no database entry)",
-                    empleadoId, antiguedadEnAnios);
-                vacaciones = CalcularVacacionesPorAntiguedad(antiguedadEnAnios);
-            }
+            // Always calculate dynamically based on seniority
+            var vacaciones = CalcularVacacionesPorAntiguedad(antiguedadEnAnios);
 
             var response = new VacacionesEmpleadoResponse
             {

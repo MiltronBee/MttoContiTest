@@ -408,8 +408,17 @@ namespace tiempo_libre.Services
                 if (!empleado.Nomina.HasValue)
                     return new ApiResponse<VacacionesEmpleadoListResponse>(false, null, "El empleado no es un empleado sindicalizado.");
 
-                // Determinar el año a consultar
-                var anio = request.Anio ?? DateTime.Now.Year;
+                // Determinar el año a consultar: usar AnioVigente de configuración si no se especifica
+                int anio;
+                if (request.Anio.HasValue)
+                {
+                    anio = request.Anio.Value;
+                }
+                else
+                {
+                    var configuracion = await _db.ConfiguracionVacaciones.FirstOrDefaultAsync();
+                    anio = configuracion?.AnioVigente ?? DateTime.Now.Year;
+                }
 
                 // Construir query base para las vacaciones
                 var query = _db.VacacionesProgramadas
@@ -890,9 +899,21 @@ namespace tiempo_libre.Services
         {
             try
             {
+                // Determinar año: usar AnioVigente de configuración si no se especifica
+                int anio;
+                if (request.Anio.HasValue)
+                {
+                    anio = request.Anio.Value;
+                }
+                else
+                {
+                    var configuracion = await _db.ConfiguracionVacaciones.FirstOrDefaultAsync();
+                    anio = configuracion?.AnioVigente ?? DateTime.Now.Year;
+                }
+
                 var response = new VacacionesAsignadasMultipleResponse
                 {
-                    Anio = request.Anio ?? DateTime.Now.Year
+                    Anio = anio
                 };
 
                 // Construir query base
@@ -972,7 +993,7 @@ namespace tiempo_libre.Services
                 foreach (var empleado in empleados)
                 {
                     var calculo = await _vacacionesService.CalcularVacacionesPorEmpleadoAsync(
-                        empleado.Id, response.Anio.Value);
+                        empleado.Id, anio);
                     if (calculo.Success && calculo.Data != null)
                     {
                         totalDisponibles += calculo.Data.TotalDias;
@@ -984,13 +1005,13 @@ namespace tiempo_libre.Services
                 // Resumen por área si se solicita
                 if (request.IncluirResumenPorArea)
                 {
-                    response.ResumenAreas = await ObtenerResumenPorAreaAsync(empleados, todasLasVacaciones, response.Anio.Value);
+                    response.ResumenAreas = await ObtenerResumenPorAreaAsync(empleados, todasLasVacaciones, anio);
                 }
 
                 // Resumen por grupo si se solicita
                 if (request.IncluirResumenPorGrupo)
                 {
-                    response.ResumenGrupos = await ObtenerResumenPorGrupoAsync(empleados, todasLasVacaciones, response.Anio.Value);
+                    response.ResumenGrupos = await ObtenerResumenPorGrupoAsync(empleados, todasLasVacaciones, anio);
                 }
 
                 return new ApiResponse<VacacionesAsignadasMultipleResponse>(true, response, null);
