@@ -1,6 +1,7 @@
 import React from "react";
 import { ExceptionConfiguration } from "./ExceptionConfiguration";
 import { ManningExceptionConfiguration } from "./ManningExceptionConfiguration";
+import { AbsencePercentageExceptionConfiguration } from "./AbsencePercentageExceptionConfiguration";
 import type { Grupo } from "@/interfaces/Grupo.interface";
 
 interface SidebarProps {
@@ -59,6 +60,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                     manningBase={manningBase || manningRequerido}
                     onManningChange={onManningChange}
                     areas={areas}
+                />
+            )}
+
+            {/* Excepciones de % Ausencia - Se muestra si showManning es true */}
+            {showManning && currentDate && currentAreaGroups.length > 0 && (
+                <AbsencePercentageExceptionConfiguration
+                    currentDate={currentDate}
+                    currentAreaGroups={currentAreaGroups}
                 />
             )}
 
