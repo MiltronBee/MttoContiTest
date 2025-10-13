@@ -127,37 +127,7 @@ app.UseMiddleware<tiempo_libre.Middlewares.RoleAuthorizationMiddleware>();
 
 app.MapControllers();
 
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<FreeTimeDbContext>();
-    db.Database.Migrate(); // Aplica migraciones y crea la BD si no existe
-    // Asegura que todos los roles del enum existan en la BD
-    tiempo_libre.Setup.RolSeeder.EnsureRolesExist(db);
-
-    // Asegura que todas las reglas existan en la BD
-    tiempo_libre.Setup.ReglaSeeder.EnsureReglaExist(db);
-
-    // Asegura que los RolesSemanales existan en la BD
-    tiempo_libre.Setup.RolesSemanalesSeeder.EnsureRolesSemanalesExist(db);
-
-    // Asegura que todas las relaciones de TurnosXRolSemanalXRegla existen
-    tiempo_libre.Setup.TurnosXRolSemanalXReglaSeeder.EnsureTurnosXRolSemanalXReglaExist(db);
-
-    // Verificar y crear el rol SuperUsuario y el usuario con ese rol
-    tiempo_libre.Setup.SuperUserSeeder.EnsureSuperUserExists(db);
-
-    // Seeder para VacacionesPorAntiguedad
-    tiempo_libre.Setup.VacacionesPorAntiguedadSeeder.EnsureVacacionesPorAntiguedadExist(db);
-
-    // Seeder para ProgramacionesAnuales del año siguiente
-    tiempo_libre.Setup.ProgramacionesAnualesSeeder.EnsureProgramacionAnualForNextYear(db);
-
-    // Seeder para DiasFestivosTrabajados desde tabla original
-    var loggerFactory = scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
-    var logger = loggerFactory.CreateLogger("DiasFestivosTrabajadosSeeder");
-    // tiempo_libre.Setup.DiasFestivosTrabajadosSeeder.Seed(db, logger);
-
-}
+// Database initialization removed - using .bak restore instead of migrations and seeders
 
 IdentityModelEventSource.ShowPII = true;
 IdentityModelEventSource.LogCompleteSecurityArtifact = true;

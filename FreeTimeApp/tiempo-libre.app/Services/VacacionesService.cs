@@ -30,8 +30,11 @@ namespace tiempo_libre.Services
 
         public async Task<ApiResponse<VacacionesEmpleadoResponse>> CalcularVacacionesPorEmpleadoAsync(int empleadoId, int anio)
         {
-            // Obtener el empleado
-            var empleado = await _db.Users.FindAsync(empleadoId);
+            // Obtener el empleado con su relación a VacacionesPorAntiguedad
+            var empleado = await _db.Users
+                .Include(u => u.VacacionesPorAntiguedad)
+                .FirstOrDefaultAsync(u => u.Id == empleadoId);
+
             if (empleado == null)
                 return new ApiResponse<VacacionesEmpleadoResponse>(false, null, "El empleado especificado no existe.");
 
@@ -45,8 +48,29 @@ namespace tiempo_libre.Services
             if (antiguedadEnAnios < 1)
                 return new ApiResponse<VacacionesEmpleadoResponse>(false, null, "El empleado no tiene antigüedad suficiente para el año especificado.");
 
-            // Calcular vacaciones según las reglas
-            var vacaciones = CalcularVacacionesPorAntiguedad(antiguedadEnAnios);
+            VacacionesCalculadas vacaciones;
+
+            // PRIORITY: Use database values if employee has VacacionesPorAntiguedadId set
+            if (empleado.VacacionesPorAntiguedadId.HasValue && empleado.VacacionesPorAntiguedad != null)
+            {
+                _logger.LogInformation("Using database vacation rules for employee {EmpleadoId} with VacacionesPorAntiguedadId {Id}",
+                    empleadoId, empleado.VacacionesPorAntiguedadId);
+
+                vacaciones = new VacacionesCalculadas
+                {
+                    DiasEmpresa = empleado.VacacionesPorAntiguedad.DiasAsignadosPorContinental,
+                    DiasAsignadosAutomaticamente = empleado.VacacionesPorAntiguedad.DiasParaAsignarAutomaticamente,
+                    DiasProgramables = empleado.VacacionesPorAntiguedad.DiasPorEscogerPorEmpleado,
+                    TotalDias = empleado.VacacionesPorAntiguedad.TotalDiasDeVacaciones
+                };
+            }
+            else
+            {
+                // FALLBACK: Use calculated values if no database entry exists
+                _logger.LogInformation("Calculating vacation days for employee {EmpleadoId} with {Antiguedad} years (no database entry)",
+                    empleadoId, antiguedadEnAnios);
+                vacaciones = CalcularVacacionesPorAntiguedad(antiguedadEnAnios);
+            }
 
             var response = new VacacionesEmpleadoResponse
             {
@@ -67,7 +91,6 @@ namespace tiempo_libre.Services
         public VacacionesCalculadas CalcularVacacionesPorAntiguedad(int antiguedadEnAnios)
         {
             const int diasEmpresa = 12; // Siempre 12 días de la empresa
-            const int topeMaximoDias = 28; // Tope máximo total
             int diasAsignadosAutomaticamente = 0;
             int diasProgramables = 0;
 
@@ -99,21 +122,13 @@ namespace tiempo_libre.Services
             {
                 // Años 6 en adelante: 5 días asignados automáticamente (fijo) + días programables variables
                 diasAsignadosAutomaticamente = 5; // Fijo para 6 años en adelante
-                
+
                 // Calcular días programables: inicia con 5 en año 6, y cada 5 años se suman 2 más
                 int diasProgramablesBase = 5; // Base para año 6
                 int gruposDeCincoAnios = (antiguedadEnAnios - 6) / 5; // Cuántos grupos de 5 años han pasado desde el año 6
-                
+
                 diasProgramables = diasProgramablesBase + (gruposDeCincoAnios * 2);
-                
-                // Aplicar el tope máximo
-                int totalCalculado = diasEmpresa + diasAsignadosAutomaticamente + diasProgramables;
-                if (totalCalculado > topeMaximoDias)
-                {
-                    // Ajustar días programables para no exceder el tope
-                    diasProgramables = topeMaximoDias - diasEmpresa - diasAsignadosAutomaticamente;
-                    if (diasProgramables < 0) diasProgramables = 0;
-                }
+                // NO CAP - let it grow beyond 28 for employees with high seniority
             }
 
             return new VacacionesCalculadas
