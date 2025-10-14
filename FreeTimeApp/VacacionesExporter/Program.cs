@@ -77,12 +77,23 @@ namespace VacacionesExporter
                     return;
                 }
 
-                // Crear archivo Excel
-                Console.WriteLine("📝 Generando archivo Excel...");
-                using var workbook = new XLWorkbook();
-                var worksheet = workbook.Worksheets.Add("Vacaciones Programadas");
+                // Agrupar vacaciones por área
+                var vacacionesPorArea = vacaciones
+                    .GroupBy(v => new {
+                        AreaId = v.Empleado?.AreaId ?? 0,
+                        AreaNombre = v.Empleado?.Area?.NombreGeneral ?? "Sin Área"
+                    })
+                    .OrderBy(g => g.Key.AreaNombre)
+                    .ToList();
 
-                // Configurar encabezados
+                Console.WriteLine($"📊 Agrupando por área: {vacacionesPorArea.Count} áreas encontradas");
+                Console.WriteLine();
+
+                // Crear archivo Excel
+                Console.WriteLine("📝 Generando archivo Excel con tabs por área...");
+                using var workbook = new XLWorkbook();
+
+                // Configurar encabezados (reutilizable para cada hoja)
                 var headers = new[]
                 {
                     "ID", "Nómina", "Nombre Completo", "Área", "Grupo",
@@ -92,47 +103,79 @@ namespace VacacionesExporter
                     "Creado Por", "Última Actualización", "Actualizado Por"
                 };
 
-                for (int i = 0; i < headers.Length; i++)
+                // Rastrear nombres de hojas usados para evitar duplicados
+                var usedSheetNames = new HashSet<string>();
+
+                // Crear una hoja por área
+                foreach (var areaGroup in vacacionesPorArea)
                 {
-                    var cell = worksheet.Cell(1, i + 1);
-                    cell.Value = headers[i];
-                    cell.Style.Font.Bold = true;
-                    cell.Style.Fill.BackgroundColor = XLColor.LightBlue;
-                    cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    var areaNombre = areaGroup.Key.AreaNombre;
+                    var vacacionesArea = areaGroup.OrderBy(v => v.Empleado?.Nomina).ThenBy(v => v.FechaVacacion).ToList();
+
+                    // Sanitizar nombre de hoja (máximo 31 caracteres, sin caracteres inválidos)
+                    var sheetName = SanitizeSheetName(areaNombre);
+
+                    // Manejar duplicados
+                    var uniqueSheetName = sheetName;
+                    var counter = 1;
+                    while (usedSheetNames.Contains(uniqueSheetName))
+                    {
+                        var suffix = $" ({counter})";
+                        var maxLength = 31 - suffix.Length;
+                        uniqueSheetName = sheetName.Substring(0, Math.Min(sheetName.Length, maxLength)) + suffix;
+                        counter++;
+                    }
+                    usedSheetNames.Add(uniqueSheetName);
+
+                    var worksheet = workbook.Worksheets.Add(uniqueSheetName);
+
+                    Console.WriteLine($"  → {areaNombre}: {vacacionesArea.Count} registros");
+
+                    // Configurar encabezados
+                    for (int i = 0; i < headers.Length; i++)
+                    {
+                        var cell = worksheet.Cell(1, i + 1);
+                        cell.Value = headers[i];
+                        cell.Style.Font.Bold = true;
+                        cell.Style.Fill.BackgroundColor = XLColor.LightBlue;
+                        cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+                    }
+
+                    // Llenar datos
+                    int row = 2;
+                    foreach (var vacacion in vacacionesArea)
+                    {
+                        worksheet.Cell(row, 1).Value = vacacion.Id;
+                        worksheet.Cell(row, 2).Value = vacacion.Empleado?.Nomina?.ToString() ?? "";
+                        worksheet.Cell(row, 3).Value = vacacion.Empleado?.FullName ?? "";
+                        worksheet.Cell(row, 4).Value = vacacion.Empleado?.Area?.NombreGeneral ?? "";
+                        worksheet.Cell(row, 5).Value = vacacion.Empleado?.Grupo?.Rol ?? "";
+                        worksheet.Cell(row, 6).Value = vacacion.FechaVacacion.ToString("yyyy-MM-dd");
+                        worksheet.Cell(row, 7).Value = vacacion.TipoVacacion;
+                        worksheet.Cell(row, 8).Value = vacacion.OrigenAsignacion;
+                        worksheet.Cell(row, 9).Value = vacacion.EstadoVacacion;
+                        worksheet.Cell(row, 10).Value = vacacion.PeriodoProgramacion;
+                        worksheet.Cell(row, 11).Value = vacacion.FechaProgramacion.ToString("yyyy-MM-dd HH:mm:ss");
+                        worksheet.Cell(row, 12).Value = vacacion.PuedeSerIntercambiada ? "Sí" : "No";
+                        worksheet.Cell(row, 13).Value = vacacion.Observaciones ?? "";
+                        worksheet.Cell(row, 14).Value = vacacion.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
+                        worksheet.Cell(row, 15).Value = vacacion.CreatedBy?.ToString() ?? "";
+                        worksheet.Cell(row, 16).Value = vacacion.UpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
+                        worksheet.Cell(row, 17).Value = vacacion.UpdatedBy?.ToString() ?? "";
+                        row++;
+                    }
+
+                    // Ajustar columnas
+                    worksheet.Columns().AdjustToContents();
+
+                    // Aplicar filtros
+                    worksheet.RangeUsed().SetAutoFilter();
+
+                    // Congelar primera fila
+                    worksheet.SheetView.FreezeRows(1);
                 }
 
-                // Llenar datos
-                int row = 2;
-                foreach (var vacacion in vacaciones)
-                {
-                    worksheet.Cell(row, 1).Value = vacacion.Id;
-                    worksheet.Cell(row, 2).Value = vacacion.Empleado?.Nomina?.ToString() ?? "";
-                    worksheet.Cell(row, 3).Value = vacacion.Empleado?.FullName ?? "";
-                    worksheet.Cell(row, 4).Value = vacacion.Empleado?.Area?.NombreGeneral ?? "";
-                    worksheet.Cell(row, 5).Value = vacacion.Empleado?.Grupo?.IdentificadorSAP ?? "";
-                    worksheet.Cell(row, 6).Value = vacacion.FechaVacacion.ToString("yyyy-MM-dd");
-                    worksheet.Cell(row, 7).Value = vacacion.TipoVacacion;
-                    worksheet.Cell(row, 8).Value = vacacion.OrigenAsignacion;
-                    worksheet.Cell(row, 9).Value = vacacion.EstadoVacacion;
-                    worksheet.Cell(row, 10).Value = vacacion.PeriodoProgramacion;
-                    worksheet.Cell(row, 11).Value = vacacion.FechaProgramacion.ToString("yyyy-MM-dd HH:mm:ss");
-                    worksheet.Cell(row, 12).Value = vacacion.PuedeSerIntercambiada ? "Sí" : "No";
-                    worksheet.Cell(row, 13).Value = vacacion.Observaciones ?? "";
-                    worksheet.Cell(row, 14).Value = vacacion.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss");
-                    worksheet.Cell(row, 15).Value = vacacion.CreatedBy?.ToString() ?? "";
-                    worksheet.Cell(row, 16).Value = vacacion.UpdatedAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "";
-                    worksheet.Cell(row, 17).Value = vacacion.UpdatedBy?.ToString() ?? "";
-                    row++;
-                }
-
-                // Ajustar columnas
-                worksheet.Columns().AdjustToContents();
-
-                // Aplicar filtros
-                worksheet.RangeUsed().SetAutoFilter();
-
-                // Congelar primera fila
-                worksheet.SheetView.FreezeRows(1);
+                Console.WriteLine();
 
                 // Guardar archivo
                 var timestamp = DateTime.Now;
@@ -203,6 +246,35 @@ namespace VacacionesExporter
                 Console.WriteLine(ex.StackTrace);
                 Environment.Exit(1);
             }
+        }
+
+        /// <summary>
+        /// Sanitiza el nombre de una hoja de Excel para cumplir con las restricciones:
+        /// - Máximo 31 caracteres
+        /// - No puede contener: : \ / ? * [ ]
+        /// </summary>
+        private static string SanitizeSheetName(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                return "Sin Nombre";
+            }
+
+            // Remover caracteres inválidos para nombres de hojas de Excel
+            var invalidChars = new[] { ':', '\\', '/', '?', '*', '[', ']' };
+            var sanitized = name;
+            foreach (var c in invalidChars)
+            {
+                sanitized = sanitized.Replace(c.ToString(), "");
+            }
+
+            // Truncar a 31 caracteres (límite de Excel)
+            if (sanitized.Length > 31)
+            {
+                sanitized = sanitized.Substring(0, 31);
+            }
+
+            return string.IsNullOrWhiteSpace(sanitized) ? "Hoja" : sanitized;
         }
     }
 
@@ -283,5 +355,6 @@ namespace VacacionesExporter
     {
         public int GrupoId { get; set; }
         public string IdentificadorSAP { get; set; } = string.Empty;
+        public string Rol { get; set; } = string.Empty;
     }
 }
