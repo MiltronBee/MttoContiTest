@@ -10,6 +10,7 @@ import { downloadConstanciaAntiguedadPDF } from "@/services/pdfService";
 import { AsignacionAutomaticaService } from "@/services/asignacionAutomaticaService";
 import { vacacionesService } from "@/services/vacacionesService";
 import { BloquesReservacionService } from "@/services/bloquesReservacionService";
+import { reportesService } from "@/services/reportesService";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import {
@@ -17,7 +18,8 @@ import {
   Palmtree,
   FileText,
   Award,
-  AlertTriangle
+  AlertTriangle,
+  FileSpreadsheet
 } from "lucide-react";
 import type { EmpleadoDetalle } from "@/interfaces/Api.interface";
 
@@ -131,6 +133,12 @@ export const Reportes = () => {
       icon: AlertTriangle,
       title: "Empleados que No Respondieron",
       subtitle: "Reporte de empleados que no respondieron a la asignación de bloques de vacaciones.",
+    },
+    {
+      id: 8,
+      icon: FileSpreadsheet,
+      title: "Vacaciones Programadas por Área",
+      subtitle: "Exporta todas las vacaciones programadas agrupadas por área en formato Excel.",
     },
   ];
 
@@ -322,6 +330,24 @@ export const Reportes = () => {
         toast.dismiss();
         toast.error(
           error instanceof Error ? error.message : "No se pudo descargar el reporte de empleados que no respondieron"
+        );
+      }
+    } else if (reportId === 8) { // Vacaciones Programadas por Área
+      try {
+        const loadingToast = toast.loading("Generando reporte de vacaciones por área...");
+
+        // Usar año seleccionado si está disponible, sino null para exportar todas
+        const yearToExport = selectedYear ? parseInt(selectedYear) : undefined;
+
+        await reportesService.exportarVacacionesPorArea(yearToExport);
+
+        toast.dismiss(loadingToast);
+        toast.success("Reporte de vacaciones por área descargado exitosamente");
+      } catch (error) {
+        console.error("Error al descargar reporte de vacaciones por área:", error);
+        toast.dismiss();
+        toast.error(
+          error instanceof Error ? error.message : "No se pudo descargar el reporte de vacaciones por área"
         );
       }
     } else {

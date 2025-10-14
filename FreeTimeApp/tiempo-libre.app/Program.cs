@@ -45,6 +45,7 @@ builder.Services.AddScoped<tiempo_libre.Services.EstadosBloquesService>();
 builder.Services.AddScoped<tiempo_libre.Services.ValidadorPorcentajeService>();
 builder.Services.AddScoped<tiempo_libre.Services.ReprogramacionService>();
 builder.Services.AddScoped<tiempo_libre.Services.FestivoTrabajadoService>();
+builder.Services.AddScoped<tiempo_libre.Services.VacacionesExportService>();
 
 // Email Service con configuración SMTP
 builder.Services.AddSingleton<tiempo_libre.Services.IEmailService, tiempo_libre.Services.EmailService>();
