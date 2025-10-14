@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Save, X, Calendar } from 'lucide-react';
+import { Plus, Edit2, Trash2, Save, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useVacationConfig } from '@/hooks/useVacationConfig';
 import { excepcionesService } from '@/services/excepcionesService';
 import type { ExcepcionPorcentaje } from '@/interfaces/Api.interface';
 import type { Grupo } from '@/interfaces/Grupo.interface';
 import { toast } from 'sonner';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface AbsencePercentageExceptionConfigurationProps {
@@ -20,8 +20,6 @@ interface ExceptionFormData {
   porcentajeMaximoPermitido: number;
   motivo: string;
 }
-
-const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export const AbsencePercentageExceptionConfiguration: React.FC<AbsencePercentageExceptionConfigurationProps> = ({
   currentDate,
@@ -40,8 +38,6 @@ export const AbsencePercentageExceptionConfiguration: React.FC<AbsencePercentage
     motivo: ''
   });
 
-  const currentMonth = currentDate.getMonth();
-  const currentYear = currentDate.getFullYear();
   const porcentajeBase = config?.porcentajeAusenciaMaximo || 4.5;
 
   // Cargar excepciones del mes actual para todos los grupos
@@ -181,20 +177,6 @@ export const AbsencePercentageExceptionConfiguration: React.FC<AbsencePercentage
 
   const getExcepcionesParaGrupo = (grupoId: number) => {
     return excepciones.filter(exc => exc.grupoId === grupoId);
-  };
-
-  // Obtener días del mes con excepciones
-  const getDaysOfMonth = () => {
-    const monthStart = startOfMonth(currentDate);
-    const monthEnd = endOfMonth(currentDate);
-    return eachDayOfInterval({ start: monthStart, end: monthEnd });
-  };
-
-  const getExcepcionParaFecha = (grupoId: number, fecha: Date) => {
-    const fechaStr = format(fecha, 'yyyy-MM-dd');
-    return excepciones.find(exc =>
-      exc.grupoId === grupoId && exc.fecha === fechaStr
-    );
   };
 
   const handleGrupoClick = (grupoId: number) => {
