@@ -6,34 +6,35 @@ export const reportesService = {
    * @param year - Año opcional para filtrar las vacaciones
    */
   async exportarVacacionesPorArea(year?: number): Promise<void> {
-    try {
-      // Obtener el token de autenticación
-      const token = localStorage.getItem('auth_token') ||
-        (() => {
-          try {
-            const user = localStorage.getItem('user');
-            if (user) {
-              const userData = JSON.parse(user);
-              return userData.token || null;
-            }
-          } catch (e) {
-            return null;
+    // Obtener el token de autenticación
+    const token = localStorage.getItem('auth_token') ||
+      (() => {
+        try {
+          const user = localStorage.getItem('user');
+          if (user) {
+            const userData = JSON.parse(user);
+            return userData.token || null;
           }
-        })();
+        } catch (e) {
+          return null;
+        }
+      })();
 
-      if (!token) {
-        throw new Error('No se encontró token de autenticación');
-      }
+    if (!token) {
+      throw new Error('No se encontró token de autenticación');
+    }
 
-      const params = year ? `?year=${year}` : '';
-      const url = `${env.API_BASE_URL}/api/reportes/vacaciones-por-area${params}`;
+    const params = year ? `?year=${year}` : '';
+    const url = `${env.API_BASE_URL}/api/reportes/vacaciones-por-area${params}`;
 
+    try {
       // Realizar la petición con responseType blob para archivos
       const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
+        keepalive: true, // Prevents request from being cancelled
       });
 
       if (!response.ok) {
