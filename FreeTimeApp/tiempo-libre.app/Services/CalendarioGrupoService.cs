@@ -80,13 +80,15 @@ namespace tiempo_libre.Services
             var añoInicio = fechaInicio.Year;
             var añoFin = fechaFin.Year;
 
-            var semanaSanta = await _db.DiasInhabiles
+            // Get the LAST day (max FechaFinal) of Semana Santa in the year range
+            var semanaSantaFechaFinal = await _db.DiasInhabiles
                 .Where(d => d.Detalles.Contains("Semana Santa") &&
                            d.FechaFinal.Year >= añoInicio && d.FechaFinal.Year <= añoFin)
-                .OrderBy(d => d.FechaFinal) // Tomar la primera (más temprana) Semana Santa en el rango de años
+                .OrderByDescending(d => d.FechaFinal) // Get the LAST day of Semana Santa
+                .Select(d => (DateOnly?)d.FechaFinal)
                 .FirstOrDefaultAsync();
 
-            DateOnly? semanaSantaFechaFinal = semanaSanta?.FechaFinal;
+            Console.WriteLine($"[DEBUG] CalendarioGrupoService: Queried Semana Santa for years {añoInicio}-{añoFin}, found: {(semanaSantaFechaFinal.HasValue ? semanaSantaFechaFinal.Value.ToString("yyyy-MM-dd") : "NULL")}");
 
             // Normalizar fechas a medianoche para evitar problemas con componentes de tiempo
             var fechaInicioDate = fechaInicio.Date;
@@ -104,7 +106,7 @@ namespace tiempo_libre.Services
                     var fechaAjustada = TurnosHelper.AjustarFechaPorSemanaSanta(fecha, semanaSantaFechaFinal);
                     var diasDesdeFechaReferencia = (fechaAjustada - new DateTime(TurnosHelper.FECHA_REFERENCIA.Ticks).Date).Days;
 
-                    var turnoCode = rol[diasDesdeFechaReferencia % (cantSemanas * 7)];
+                    var turnoCode = rol[Math.Abs(diasDesdeFechaReferencia) % (cantSemanas * 7)];
                     var tipoCalendario = TipoCalendarioExtensions.FromShortString(turnoCode);
 
                     resultado.Add(new CalendarioGrupoDiaDto

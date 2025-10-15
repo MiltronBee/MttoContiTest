@@ -167,12 +167,21 @@ namespace tiempo_libre.Services
                     return resultado;
                 }
 
+                // Get the LAST day (max FechaFinal) of Semana Santa for this year
+                var semanaSantaFechaFinal = await _db.DiasInhabiles
+                    .Where(d => d.Detalles.Contains("Semana Santa") && d.FechaFinal.Year == anio)
+                    .OrderByDescending(d => d.FechaFinal) // Get the LAST day of Semana Santa
+                    .Select(d => (DateOnly?)d.FechaFinal)
+                    .FirstOrDefaultAsync();
+
+                _logger.LogInformation("Semana Santa para año {Anio}: {Fecha}", anio, semanaSantaFechaFinal?.ToString() ?? "No encontrada");
+
                 // Limitar a máximo permitido
                 var diasAAsignar = Math.Min(resultado.DiasCorrespondientes, MAX_DIAS_AUTOMATICOS);
 
                 // Buscar semana disponible
                 var semanaEncontrada = await BuscarSemanaDisponibleAsync(
-                    empleado, anio, diasAAsignar, semanasExcluidas, diasInhabiles);
+                    empleado, anio, diasAAsignar, semanasExcluidas, diasInhabiles, semanaSantaFechaFinal);
 
                 if (semanaEncontrada == null)
                 {
@@ -182,7 +191,7 @@ namespace tiempo_libre.Services
 
                 // Asignar días en la semana encontrada
                 var diasAsignados = await AsignarDiasEnSemanaAsync(
-                    empleado, semanaEncontrada, diasAAsignar, diasInhabiles);
+                    empleado, semanaEncontrada, diasAAsignar, diasInhabiles, semanaSantaFechaFinal);
 
                 resultado.SemanaAsignada = semanaEncontrada.NumeroSemana;
                 resultado.DiasVacaciones = diasAsignados;
@@ -205,11 +214,12 @@ namespace tiempo_libre.Services
         }
 
         private async Task<SemanaCalendario?> BuscarSemanaDisponibleAsync(
-            User empleado, 
-            int anio, 
-            int diasAAsignar, 
-            List<int> semanasExcluidas, 
-            List<DateOnly> diasInhabiles)
+            User empleado,
+            int anio,
+            int diasAAsignar,
+            List<int> semanasExcluidas,
+            List<DateOnly> diasInhabiles,
+            DateOnly? semanaSantaFechaFinal)
         {
             var random = new Random();
             var semanasDelAnio = Enumerable.Range(1, 52).ToList();
@@ -233,7 +243,7 @@ namespace tiempo_libre.Services
                     continue;
 
                 // Validar si la semana es viable
-                if (await EsSemanaViableAsync(empleado, semana, diasAAsignar, diasInhabiles))
+                if (await EsSemanaViableAsync(empleado, semana, diasAAsignar, diasInhabiles, semanaSantaFechaFinal))
                 {
                     return semana;
                 }
@@ -243,10 +253,11 @@ namespace tiempo_libre.Services
         }
 
         private async Task<bool> EsSemanaViableAsync(
-            User empleado, 
-            SemanaCalendario semana, 
-            int diasAAsignar, 
-            List<DateOnly> diasInhabiles)
+            User empleado,
+            SemanaCalendario semana,
+            int diasAAsignar,
+            List<DateOnly> diasInhabiles,
+            DateOnly? semanaSantaFechaFinal)
         {
             var diasDisponibles = 0;
             var fechaActual = semana.FechaInicio;
@@ -261,7 +272,7 @@ namespace tiempo_libre.Services
                 }
 
                 // Obtener turno del empleado para este día
-                var turno = ObtenerTurnoEmpleado(empleado.Grupo?.Rol, fechaActual);
+                var turno = ObtenerTurnoEmpleado(empleado.Grupo?.Rol, fechaActual, semanaSantaFechaFinal);
                 
                 // Si no es descanso, verificar porcentaje de ausencia
                 if (!TurnosHelper.EsDescanso(turno))
@@ -287,10 +298,11 @@ namespace tiempo_libre.Services
         }
 
         private async Task<List<DiaVacacionAsignado>> AsignarDiasEnSemanaAsync(
-            User empleado, 
-            SemanaCalendario semana, 
-            int diasAAsignar, 
-            List<DateOnly> diasInhabiles)
+            User empleado,
+            SemanaCalendario semana,
+            int diasAAsignar,
+            List<DateOnly> diasInhabiles,
+            DateOnly? semanaSantaFechaFinal)
         {
             var diasAsignados = new List<DiaVacacionAsignado>();
             var fechaActual = semana.FechaInicio;
@@ -305,8 +317,8 @@ namespace tiempo_libre.Services
                     continue;
                 }
 
-                var turno = ObtenerTurnoEmpleado(empleado.Grupo?.Rol, fechaActual);
-                
+                var turno = ObtenerTurnoEmpleado(empleado.Grupo?.Rol, fechaActual, semanaSantaFechaFinal);
+
                 // Solo asignar si no es descanso
                 if (!TurnosHelper.EsDescanso(turno))
                 {
@@ -338,13 +350,13 @@ namespace tiempo_libre.Services
             return diasAsignados;
         }
 
-        private string ObtenerTurnoEmpleado(string rolGrupo, DateOnly fecha)
+        private string ObtenerTurnoEmpleado(string rolGrupo, DateOnly fecha, DateOnly? semanaSantaFechaFinal)
         {
-            // Usar TurnosHelper centralizado
+            // Usar TurnosHelper centralizado con Semana Santa
             if (string.IsNullOrEmpty(rolGrupo))
                 return "1";
 
-            return TurnosHelper.ObtenerTurnoParaFecha(rolGrupo, fecha);
+            return TurnosHelper.ObtenerTurnoParaFecha(rolGrupo, fecha, semanaSantaFechaFinal);
         }
 
 

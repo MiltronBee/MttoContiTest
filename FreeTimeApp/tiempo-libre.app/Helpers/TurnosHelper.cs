@@ -101,6 +101,19 @@ namespace tiempo_libre.Helpers
         /// <returns>Código de turno ("1", "2", "3", "D", etc.)</returns>
         public static string ObtenerTurnoParaFecha(string rolGrupo, DateOnly fecha)
         {
+            // Call new overload with null Semana Santa (no adjustment)
+            return ObtenerTurnoParaFecha(rolGrupo, fecha, null);
+        }
+
+        /// <summary>
+        /// Obtener el turno de un empleado para una fecha específica con ajuste de Semana Santa
+        /// </summary>
+        /// <param name="rolGrupo">Rol del grupo del empleado (ej: "R0144_01")</param>
+        /// <param name="fecha">Fecha a consultar</param>
+        /// <param name="semanaSantaFechaFinal">Fecha final de Semana Santa (para aplicar -7 días a fechas posteriores)</param>
+        /// <returns>Código de turno ("1", "2", "3", "D", etc.)</returns>
+        public static string ObtenerTurnoParaFecha(string rolGrupo, DateOnly fecha, DateOnly? semanaSantaFechaFinal)
+        {
             var reglaInfo = ParseRolGrupo(rolGrupo);
             if (reglaInfo == null)
                 return "1"; // Fallback
@@ -110,7 +123,10 @@ namespace tiempo_libre.Helpers
                 return "1"; // Fallback
 
             var fechaDateTime = fecha.ToDateTime(TimeOnly.MinValue);
-            var diasDiferencia = (fechaDateTime - FECHA_REFERENCIA).Days;
+
+            // APPLY SEMANA SANTA ADJUSTMENT (subtract 7 days for dates after Semana Santa)
+            var fechaAjustada = AjustarFechaPorSemanaSanta(fechaDateTime, semanaSantaFechaFinal);
+            var diasDiferencia = (fechaAjustada - FECHA_REFERENCIA).Days;
             var indice = diasDiferencia;
 
             return rol[Math.Abs(indice) % rol.Length];
@@ -156,7 +172,10 @@ namespace tiempo_libre.Helpers
         public static DateTime AjustarFechaPorSemanaSanta(DateTime fecha, DateOnly? semanaSantaFechaFinal)
         {
             if (!semanaSantaFechaFinal.HasValue)
+            {
+                Console.WriteLine($"[DEBUG] AjustarFechaPorSemanaSanta: semanaSantaFechaFinal is NULL for fecha {fecha:yyyy-MM-dd}");
                 return fecha;
+            }
 
             var fechaOnly = DateOnly.FromDateTime(fecha);
             var fechaFinalSS = semanaSantaFechaFinal.Value;
@@ -164,9 +183,11 @@ namespace tiempo_libre.Helpers
             // Si la fecha es después de Semana Santa, restar 7 días para el cálculo
             if (fechaOnly > fechaFinalSS)
             {
+                Console.WriteLine($"[DEBUG] AjustarFechaPorSemanaSanta: {fecha:yyyy-MM-dd} > {fechaFinalSS:yyyy-MM-dd}, returning {fecha.AddDays(-7):yyyy-MM-dd}");
                 return fecha.AddDays(-7);
             }
 
+            Console.WriteLine($"[DEBUG] AjustarFechaPorSemanaSanta: {fecha:yyyy-MM-dd} <= {fechaFinalSS:yyyy-MM-dd}, no adjustment");
             return fecha;
         }
     }
