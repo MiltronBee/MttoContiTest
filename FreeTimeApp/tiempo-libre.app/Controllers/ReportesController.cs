@@ -28,7 +28,6 @@ namespace tiempo_libre.Controllers
         /// <param name="year">Año a filtrar (opcional)</param>
         /// <returns>Archivo Excel con las vacaciones programadas por área</returns>
         [HttpGet("vacaciones-por-area")]
-        [Authorize(Roles = "SuperUsuario,Administrador")]
         public async Task<IActionResult> ExportarVacacionesPorArea([FromQuery] int? year = null)
         {
             try

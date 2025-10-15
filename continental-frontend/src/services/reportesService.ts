@@ -64,9 +64,11 @@ export const reportesService = {
       document.body.appendChild(link);
       link.click();
 
-      // Limpiar
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      // Limpiar después de un pequeño delay para evitar race conditions
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(downloadUrl);
+      }, 100);
     } catch (error) {
       console.error('Error al exportar vacaciones por área:', error);
       throw error;
