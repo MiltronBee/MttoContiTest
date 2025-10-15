@@ -75,13 +75,15 @@ namespace tiempo_libre.Services
             // Crear el rol específico para este grupo usando TurnosHelper
             var rol = TurnosHelper.CrearRol(regla, numeroGrupo);
 
-            // Buscar Semana Santa que haya ocurrido antes o durante el rango de fechas
-            // Esto asegura que el ajuste aplique incluso si Semana Santa no está visible en pantalla
-            var fechaFinOnly = DateOnly.FromDateTime(fechaFin);
+            // Buscar Semana Santa del año calendario, independientemente de si está visible en pantalla
+            // Obtener todos los años en el rango de fechas para buscar Semana Santa en cada año
+            var añoInicio = fechaInicio.Year;
+            var añoFin = fechaFin.Year;
+
             var semanaSanta = await _db.DiasInhabiles
                 .Where(d => d.Detalles.Contains("Semana Santa") &&
-                           d.FechaFinal <= fechaFinOnly)
-                .OrderByDescending(d => d.FechaFinal)
+                           d.FechaFinal.Year >= añoInicio && d.FechaFinal.Year <= añoFin)
+                .OrderBy(d => d.FechaFinal) // Tomar la primera (más temprana) Semana Santa en el rango de años
                 .FirstOrDefaultAsync();
 
             DateOnly? semanaSantaFechaFinal = semanaSanta?.FechaFinal;
