@@ -160,25 +160,59 @@ static async Task SeedDataAsync(MantenimientoDbContext db)
         await db.SaveChangesAsync();
     }
 
-    // Crear usuario admin si no existe
+    // Crear usuarios si no existen
     if (!db.Users.Any())
     {
         var adminRole = db.Roles.First(r => r.Nombre == "SuperUsuario");
-        var salt = MantenimientoEquipos.Utils.PasswordHasher.GenerateSalt();
-        var hash = MantenimientoEquipos.Utils.PasswordHasher.HashPassword("Admin123!", salt);
+        var operadorRole = db.Roles.First(r => r.Nombre == "Operador");
+        var tecnicoRole = db.Roles.First(r => r.Nombre == "Tecnico");
 
+        // Admin
+        var salt1 = MantenimientoEquipos.Utils.PasswordHasher.GenerateSalt();
+        var hash1 = MantenimientoEquipos.Utils.PasswordHasher.HashPassword("Admin123!", salt1);
         var admin = new User
         {
             NombreCompleto = "Administrador del Sistema",
             Username = "admin",
             Email = "admin@continental.com",
-            PasswordHash = hash,
-            PasswordSalt = salt,
+            PasswordHash = hash1,
+            PasswordSalt = salt1,
             NumeroEmpleado = "00000001",
             CreatedAt = DateTime.UtcNow,
             Roles = new List<Rol> { adminRole }
         };
-        db.Users.Add(admin);
+
+        // Proveedor Externo (Técnico)
+        var salt2 = MantenimientoEquipos.Utils.PasswordHasher.GenerateSalt();
+        var hash2 = MantenimientoEquipos.Utils.PasswordHasher.HashPassword("Proveedor123!", salt2);
+        var proveedor = new User
+        {
+            NombreCompleto = "Proveedor Externo MX",
+            Username = "proveedor",
+            Email = "proveedor@proveedorexterno.com",
+            PasswordHash = hash2,
+            PasswordSalt = salt2,
+            NumeroEmpleado = "EXT00001",
+            CreatedAt = DateTime.UtcNow,
+            Roles = new List<Rol> { tecnicoRole }
+        };
+
+        // Cliente Interno (Operador)
+        var salt3 = MantenimientoEquipos.Utils.PasswordHasher.GenerateSalt();
+        var hash3 = MantenimientoEquipos.Utils.PasswordHasher.HashPassword("Cliente123!", salt3);
+        var cliente = new User
+        {
+            NombreCompleto = "Juan Pérez García",
+            Username = "cliente",
+            Email = "juan.perez@continental.com",
+            PasswordHash = hash3,
+            PasswordSalt = salt3,
+            NumeroEmpleado = "32000100",
+            CreatedAt = DateTime.UtcNow,
+            Roles = new List<Rol> { operadorRole }
+        };
+
+        db.Users.AddRange(admin, proveedor, cliente);
         await db.SaveChangesAsync();
     }
 

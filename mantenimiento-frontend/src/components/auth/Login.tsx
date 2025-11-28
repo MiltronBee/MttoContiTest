@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button, Input, Alert, AlertDescription } from '@/components/ui';
-import { Truck } from 'lucide-react';
+import continentalLogo from '@/assets/continental_real.png';
 
 export function Login() {
   const navigate = useNavigate();
@@ -31,24 +31,28 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-continental-bg p-4">
       <div className="w-full max-w-md">
         {/* Logo y título */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-xl mb-4">
-            <Truck className="w-8 h-8 text-white" />
+          <div className="inline-flex items-center justify-center mb-4">
+            <img
+              src={continentalLogo}
+              alt="Continental"
+              className="h-16 w-auto"
+            />
           </div>
-          <h1 className="text-2xl font-bold text-white">
-            Continental Mantenimiento
+          <h1 className="text-2xl font-bold text-continental-black">
+            Sistema de Mantenimiento
           </h1>
-          <p className="text-gray-400 mt-2">
-            Sistema de Gestión de Mantenimiento de Equipos
+          <p className="text-continental-gray-1 mt-2">
+            Gestión de Equipos de Transporte
           </p>
         </div>
 
         {/* Formulario */}
-        <div className="bg-white rounded-xl shadow-xl p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">
+        <div className="bg-white rounded-xl shadow-xl p-8 border-t-4 border-continental-yellow">
+          <h2 className="text-xl font-semibold text-continental-black mb-6">
             Iniciar Sesión
           </h2>
 
@@ -81,7 +85,7 @@ export function Login() {
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-continental-yellow hover:bg-continental-yellow/90 text-continental-black font-semibold"
               isLoading={isLoading}
               disabled={isLoading}
             >
@@ -90,14 +94,14 @@ export function Login() {
           </form>
 
           <div className="mt-6 text-center">
-            <a href="#" className="text-sm text-primary hover:underline">
+            <a href="#" className="text-sm text-continental-blue-dark hover:underline">
               ¿Olvidaste tu contraseña?
             </a>
           </div>
         </div>
 
         {/* Footer */}
-        <p className="text-center text-gray-500 text-sm mt-6">
+        <p className="text-center text-continental-gray-1 text-sm mt-6">
           Continental Tire - San Luis Potosí
         </p>
       </div>

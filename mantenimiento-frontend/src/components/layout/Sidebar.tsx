@@ -89,7 +89,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
   return (
     <aside
       className={cn(
-        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 bg-white border-r transition-transform duration-300 ease-in-out',
+        'fixed left-0 top-16 z-40 h-[calc(100vh-4rem)] w-64 bg-continental-gray-4 border-r border-continental-gray-3 transition-transform duration-300 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full',
         'lg:translate-x-0'
       )}
@@ -101,10 +101,10 @@ export function Sidebar({ isOpen }: SidebarProps) {
             to={item.href}
             className={({ isActive }) =>
               cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-primary text-primary-foreground'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  ? 'bg-continental-yellow text-continental-black shadow-sm'
+                  : 'text-continental-gray-1 hover:bg-continental-gray-3 hover:text-continental-black'
               )
             }
           >
