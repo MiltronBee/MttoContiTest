@@ -65,6 +65,8 @@ builder.Services.AddScoped<ReporteFallaService>();
 builder.Services.AddScoped<OrdenTrabajoService>();
 builder.Services.AddScoped<NotificacionService>();
 builder.Services.AddScoped<DashboardService>();
+builder.Services.AddScoped<SolicitudRefaccionService>();
+builder.Services.AddScoped<ChecklistService>();
 
 // Configuración CORS para permitir peticiones desde el frontend
 var allowedOrigins = new[] {

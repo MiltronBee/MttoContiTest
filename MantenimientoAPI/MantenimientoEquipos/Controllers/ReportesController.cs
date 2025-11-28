@@ -39,7 +39,7 @@ public class ReportesController : ControllerBase
     /// <summary>
     /// Obtiene un reporte por su ID
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetById(int id)
     {
         var reporte = await _reporteService.GetByIdAsync(id);
