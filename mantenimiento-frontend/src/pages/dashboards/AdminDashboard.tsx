@@ -1,28 +1,28 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  Badge,
-  LoadingCard,
-} from '@/components/ui';
+import { LoadingCard } from '@/components/ui';
 import { dashboardService } from '@/services';
 import type { DashboardStats, KPIs } from '@/interfaces';
-import { formatNumber, formatCurrency } from '@/lib/utils';
+import {
+  KPICard,
+  PendingRequestsList,
+  EquipmentStatusPanel,
+  MaintenanceAlerts,
+  WeeklyStatsTable,
+  OrdersByStatusChart,
+  FailuresByTypeChart,
+  WeeklyTrendChart,
+} from '@/components/dashboard';
 import {
   Truck,
-  AlertTriangle,
   Wrench,
-  CheckCircle,
-  DollarSign,
-  Users,
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  ArrowRight,
   Clock,
+  CheckCircle,
+  AlertTriangle,
+  Activity,
+  Users,
+  DollarSign,
+  ArrowRight,
 } from 'lucide-react';
 
 export function AdminDashboard() {
@@ -60,299 +60,174 @@ export function AdminDashboard() {
   }
 
   const disponibilidad = kpis?.porcentajeDisponibilidad || 0;
+  const totalVehiculos = stats?.totalVehiculos || 0;
+  const vehiculosOperativos = stats?.vehiculosOperativos || 0;
+  const vehiculosEnMantenimiento = stats?.vehiculosEnReparacion || 0;
+  const reportesPendientes = stats?.reportesSinAtender || 0;
+  const ordenesActivas = (stats?.ordenesPendientes || 0) + (stats?.ordenesEnProceso || 0);
+  const ordenesCompletadas = stats?.ordenesCompletadasSemana || 0;
+  const tiempoPromedio = kpis?.tiempoPromedioResolucion || 0;
+
+  // Map data for charts
+  const orderStatusData = kpis?.ordenesPorEstado?.map((item) => ({
+    name: item.estadoNombre,
+    value: item.cantidad,
+    color:
+      item.estado === 5
+        ? '#2db928'
+        : item.estado === 4
+        ? '#10b981'
+        : item.estado === 2
+        ? '#ffa500'
+        : item.estado === 1
+        ? '#00a5dc'
+        : '#6b7280',
+  })) || [];
+
+  const failureData = kpis?.fallasPorTipo?.map((item) => ({
+    name: item.tipoNombre,
+    value: item.cantidadFallas,
+  })) || [];
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Panel Administrativo</h1>
-        <p className="text-gray-500">Vista general del sistema de mantenimiento</p>
+        <h1 className="text-2xl font-bold text-continental-black">Panel Administrativo</h1>
+        <p className="text-continental-gray-1">Vista general del sistema de mantenimiento</p>
       </div>
 
-      {/* KPIs principales */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Disponibilidad Flota
-            </CardTitle>
-            <Activity className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-bold">{disponibilidad.toFixed(1)}%</span>
-              {disponibilidad >= 90 ? (
-                <TrendingUp className="h-4 w-4 text-green-500" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-500" />
-              )}
-            </div>
-            <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className={`h-full rounded-full ${
-                  disponibilidad >= 90
-                    ? 'bg-green-500'
-                    : disponibilidad >= 70
-                    ? 'bg-yellow-500'
-                    : 'bg-red-500'
-                }`}
-                style={{ width: `${disponibilidad}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Tiempo Promedio Resolución
-            </CardTitle>
-            <Clock className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {kpis?.tiempoPromedioResolucion?.toFixed(1) || 0}h
-            </div>
-            <p className="text-xs text-gray-500">Promedio de resolución</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Pagos Pendientes
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats?.pagosPendientes || 0}</div>
-            <p className="text-xs text-gray-500">
-              {formatCurrency(stats?.montoPagosPendientes || 0)}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Costo del Período
-            </CardTitle>
-            <DollarSign className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(kpis?.costoTotalPeriodo || 0)}
-            </div>
-            <p className="text-xs text-gray-500">
-              MO: {formatCurrency(kpis?.costoManoObraPeriodo || 0)} | Ref: {formatCurrency(kpis?.costoRefaccionesPeriodo || 0)}
-            </p>
-          </CardContent>
-        </Card>
+      {/* KPI Cards Row */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <KPICard
+          label="Vehículos Operativos"
+          value={vehiculosOperativos}
+          trend={{
+            value: `${totalVehiculos > 0 ? ((vehiculosOperativos / totalVehiculos) * 100).toFixed(0) : 0}% del total`,
+            isPositive: true,
+          }}
+          variant="green"
+          icon={<Truck className="h-6 w-6" />}
+        />
+        <KPICard
+          label="En Mantenimiento"
+          value={vehiculosEnMantenimiento}
+          variant="yellow"
+          icon={<Wrench className="h-6 w-6" />}
+        />
+        <KPICard
+          label="Reportes Pendientes"
+          value={reportesPendientes}
+          trend={
+            reportesPendientes > 0
+              ? { value: `${stats?.reportesNuevosHoy || 0} nuevos hoy`, isPositive: false }
+              : undefined
+          }
+          variant={reportesPendientes > 5 ? 'red' : 'blue'}
+          icon={<AlertTriangle className="h-6 w-6" />}
+        />
+        <KPICard
+          label="Tiempo Promedio"
+          value={`${tiempoPromedio.toFixed(1)}h`}
+          trend={{
+            value: 'de resolución',
+            isPositive: tiempoPromedio < 4,
+          }}
+          variant="blue"
+          icon={<Clock className="h-6 w-6" />}
+        />
+        <KPICard
+          label="Disponibilidad"
+          value={`${disponibilidad.toFixed(1)}%`}
+          trend={{
+            value: disponibilidad >= 90 ? 'Meta alcanzada' : 'Por debajo de meta',
+            isPositive: disponibilidad >= 90,
+          }}
+          variant={disponibilidad >= 90 ? 'green' : 'red'}
+          icon={<Activity className="h-6 w-6" />}
+        />
+        <KPICard
+          label="Completadas Semana"
+          value={ordenesCompletadas}
+          trend={{
+            value: `${stats?.ordenesCompletadasHoy || 0} hoy`,
+            isPositive: true,
+          }}
+          variant="green"
+          icon={<CheckCircle className="h-6 w-6" />}
+        />
       </div>
 
-      {/* Stats de vehículos y órdenes */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Total Vehículos
-            </CardTitle>
-            <Truck className="h-4 w-4 text-gray-400" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats?.totalVehiculos || 0)}</div>
-            <div className="flex gap-2 mt-2 text-xs">
-              <span className="text-green-600">{stats?.vehiculosOperativos} operativos</span>
-              <span className="text-yellow-600">{stats?.vehiculosEnReparacion} en rep.</span>
-              <span className="text-red-600">{stats?.vehiculosFueraServicio} fuera</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Reportes Sin Atender
-            </CardTitle>
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats?.reportesSinAtender || 0)}</div>
-            <p className="text-xs text-gray-500">
-              {stats?.reportesNuevosHoy || 0} nuevos hoy
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Órdenes Activas
-            </CardTitle>
-            <Wrench className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {(stats?.ordenesPendientes || 0) + (stats?.ordenesEnProceso || 0)}
-            </div>
-            <p className="text-xs text-gray-500">
-              {stats?.ordenesPendientes} pendientes, {stats?.ordenesEnProceso} en proceso
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">
-              Completadas Semana
-            </CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatNumber(stats?.ordenesCompletadasSemana || 0)}</div>
-            <p className="text-xs text-gray-500">
-              {stats?.ordenesCompletadasHoy || 0} completadas hoy
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Gráficos y tablas */}
+      {/* Main Grid - Pending Requests & Equipment Status */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Órdenes por estado */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Órdenes por Estado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {kpis?.ordenesPorEstado && kpis.ordenesPorEstado.length > 0 ? (
-              <div className="space-y-3">
-                {kpis.ordenesPorEstado.map((item) => (
-                  <div key={item.estado} className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium">{item.estadoNombre}</span>
-                        <span className="text-sm text-gray-500">{item.cantidad}</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${
-                            item.estado === 5
-                              ? 'bg-green-500'
-                              : item.estado === 4
-                              ? 'bg-emerald-500'
-                              : item.estado === 2
-                              ? 'bg-yellow-500'
-                              : item.estado === 1
-                              ? 'bg-blue-500'
-                              : 'bg-gray-400'
-                          }`}
-                          style={{
-                            width: `${Math.min(
-                              (item.cantidad /
-                                Math.max(...kpis.ordenesPorEstado.map((o) => o.cantidad))) *
-                                100,
-                              100
-                            )}%`,
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-4">No hay datos disponibles</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Fallas por tipo de vehículo */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Fallas por Tipo de Vehículo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {kpis?.fallasPorTipo && kpis.fallasPorTipo.length > 0 ? (
-              <div className="space-y-3">
-                {kpis.fallasPorTipo.map((item) => (
-                  <div key={item.tipoVehiculo} className="flex items-center gap-3">
-                    <div className="p-2 bg-gray-100 rounded-lg">
-                      <Truck className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">{item.tipoNombre}</span>
-                        <Badge variant="secondary">{item.cantidadFallas} fallas</Badge>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center text-gray-500 py-4">No hay datos disponibles</p>
-            )}
-          </CardContent>
-        </Card>
+        <PendingRequestsList />
+        <div className="space-y-6">
+          <EquipmentStatusPanel />
+          <MaintenanceAlerts />
+        </div>
       </div>
 
-      {/* Enlaces rápidos */}
+      {/* Charts Row */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <OrdersByStatusChart data={orderStatusData.length > 0 ? orderStatusData : undefined} />
+        <FailuresByTypeChart data={failureData.length > 0 ? failureData : undefined} />
+        <WeeklyTrendChart />
+      </div>
+
+      {/* Weekly Stats Table */}
+      <WeeklyStatsTable />
+
+      {/* Quick Links */}
       <div className="grid gap-4 md:grid-cols-3">
         <Link to="/vehiculos">
-          <Card className="hover:border-primary transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Truck className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Gestionar Vehículos</p>
-                    <p className="text-sm text-gray-500">Ver y administrar flota</p>
-                  </div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-l-continental-blue hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-continental-blue/10 rounded-lg">
+                  <Truck className="h-5 w-5 text-continental-blue" />
                 </div>
-                <ArrowRight className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-continental-black">Gestionar Vehículos</p>
+                  <p className="text-sm text-continental-gray-1">Ver y administrar flota</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+              <ArrowRight className="h-5 w-5 text-continental-gray-2" />
+            </div>
+          </div>
         </Link>
 
         <Link to="/usuarios">
-          <Card className="hover:border-primary transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Users className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Gestionar Usuarios</p>
-                    <p className="text-sm text-gray-500">Administrar personal</p>
-                  </div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-l-continental-yellow hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-continental-yellow/10 rounded-lg">
+                  <Users className="h-5 w-5 text-continental-yellow" />
                 </div>
-                <ArrowRight className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-continental-black">Gestionar Usuarios</p>
+                  <p className="text-sm text-continental-gray-1">Administrar personal</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+              <ArrowRight className="h-5 w-5 text-continental-gray-2" />
+            </div>
+          </div>
         </Link>
 
         <Link to="/pagos">
-          <Card className="hover:border-primary transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <DollarSign className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <p className="font-medium">Gestionar Pagos</p>
-                    <p className="text-sm text-gray-500">Facturas y pagos</p>
-                  </div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border-l-4 border-l-continental-green hover:-translate-y-1 transition-all duration-300 hover:shadow-xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-continental-green/10 rounded-lg">
+                  <DollarSign className="h-5 w-5 text-continental-green" />
                 </div>
-                <ArrowRight className="h-5 w-5 text-gray-400" />
+                <div>
+                  <p className="font-medium text-continental-black">Gestionar Pagos</p>
+                  <p className="text-sm text-continental-gray-1">Facturas y pagos</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+              <ArrowRight className="h-5 w-5 text-continental-gray-2" />
+            </div>
+          </div>
         </Link>
       </div>
     </div>
